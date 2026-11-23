@@ -205,6 +205,15 @@
 
   footer { border-top: 1px solid var(--line); padding: 30px 0 44px; color: var(--muted); font-size: 12px; }
   footer .wrap { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+  .qlt-card { max-width: 620px; position: relative; z-index: 2; background: rgba(10,10,10,.82); backdrop-filter: blur(6px); }
+  .qlt-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 14px 0 12px; }
+  .qlt-stats div { display: flex; flex-direction: column; gap: 4px; }
+  .qlt-stats span { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+  .qlt-stats b { font-size: 18px; color: var(--ink); font-weight: 600; }
+  .qlt-bar { height: 6px; background: var(--line); border-radius: 99px; overflow: hidden; }
+  .qlt-bar i { display: block; height: 100%; width: 0; background: var(--accent); border-radius: 99px; transition: width 1.2s ease; }
+  .qlt-sub { font-size: 12px; color: var(--muted); margin: 8px 0 0; }
+  @media (max-width: 640px) { .qlt-stats { grid-template-columns: repeat(2, 1fr); } }
   footer .foot-nav { letter-spacing: 0.06em; line-height: 2; }
   footer .foot-note { flex-basis: 100%; line-height: 1.7; max-width: 620px; }
 
@@ -313,8 +322,16 @@
       <span class="arrow">↗</span>
     </a>
 
-    <div class="contract" style="margin-top:28px; margin-bottom:28px;">
+    <div class="contract qlt-card" style="margin-top:28px; margin-bottom:28px;">
       <div class="label mono">$QLT · Community token · Robinhood Chain</div>
+      <div class="qlt-stats">
+        <div><span class="mono">Price</span><b id="qlt-price">…</b></div>
+        <div><span class="mono">Market cap</span><b id="qlt-mcap">…</b></div>
+        <div><span class="mono">Holders</span><b id="qlt-holders">…</b></div>
+        <div><span class="mono">Bonding</span><b id="qlt-pct">…</b></div>
+      </div>
+      <div class="qlt-bar"><i id="qlt-bar"></i></div>
+      <p class="mono qlt-sub" id="qlt-sub">Loading on-chain data…</p>
       <p class="mono" style="font-size:14px; overflow-wrap:anywhere; margin:12px 0;" id="qlt-ca">0x4cd7d02382988703ba625cb9e705b8df9798a5fa</p>
       <button class="btn-gold" type="button" onclick="navigator.clipboard.writeText(document.getElementById('qlt-ca').textContent).then(()=>{this.textContent='Copied'})">Copy CA</button>
     </div>
@@ -971,6 +988,80 @@ if (bg && !reduce) {
     });
     el.addEventListener('pointerleave', () => { el.style.transform = ''; });
   });
+})();
+</script>
+<script>
+(function () {
+  // $QLT live stats. Reads straight from Robinhood Chain (pons v2 curve), per docs.ponsfamily.com/docs/v2.
+  var RPCS = ['https://robinhoodchain.blockscout.com/api/eth-rpc', 'https://rpc.mainnet.chain.robinhood.com'];
+  var TOKEN = '0x4cd7d02382988703ba625cb9e705b8df9798a5fa';
+  var CURVE = '0xa509876b671d810dc7ff48d0598f02fe05bf0435';
+  var $ = function (id) { return document.getElementById(id); };
+  var errs = [];
+  var rid = 0;
+  function rpc(url, to, data) {
+    return fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ jsonrpc: '2.0', id: ++rid, method: 'eth_call', params: [{ to: to, data: data }, 'latest'] }) })
+      .then(function (r) { return r.json(); })
+      .then(function (j) { if (j.error || !j.result || j.result === '0x') throw new Error(j.error ? (j.error.message || 'rpc error') : 'empty'); return j.result; });
+  }
+  function call(to, data, name) {
+    return rpc(RPCS[0], to, data).catch(function () { return rpc(RPCS[1], to, data); })
+      .catch(function (e) { errs.push(name + ': ' + e.message); return null; });
+  }
+  function word(hex, i) { return BigInt('0x' + hex.slice(2 + i * 64, 2 + (i + 1) * 64)); }
+  function num(big, dec) { return Number(big) / Math.pow(10, dec); }
+  function usd(v) {
+    if (v >= 1e6) return '$' + (v / 1e6).toFixed(2) + 'M';
+    if (v >= 1e3) return '$' + (v / 1e3).toFixed(2) + 'K';
+    if (v >= 1) return '$' + v.toFixed(2);
+    if (v > 0) return '$' + v.toPrecision(3);
+    return '$0';
+  }
+  function load() {
+    errs = [];
+    var eth = fetch('https://coins.llama.fi/prices/current/coingecko:ethereum')
+      .then(function (r) { return r.json(); })
+      .then(function (j) { return j.coins['coingecko:ethereum'].price; })
+      .catch(function () { errs.push('eth price'); return null; });
+    Promise.all([
+      call(CURVE, '0x0902f1ac', 'getReserves'),
+      call(CURVE, '0x4f1f58fd', 'realQuoteReserve'),
+      call(CURVE, '0x8b0bc501', 'graduationThreshold'),
+      call(CURVE, '0xe7c2b772', 'graduated'),
+      call(TOKEN, '0x18160ddd', 'totalSupply'),
+      call(TOKEN, '0x313ce567', 'decimals'),
+      eth
+    ]).then(function (r) {
+      var dec = r[5] ? Number(word(r[5], 0)) : 18;
+      var ethUsd = r[6];
+      var supply = r[4] ? num(word(r[4], 0), dec) : null;
+      var priceEth = null;
+      if (r[0]) {
+        var q = num(word(r[0], 0), 18), t = num(word(r[0], 1), dec);
+        if (t > 0) priceEth = q / t;
+      }
+      if (priceEth !== null) {
+        $('qlt-price').textContent = ethUsd ? usd(priceEth * ethUsd) : priceEth.toPrecision(3) + ' ETH';
+        $('qlt-mcap').textContent = supply === null ? '—' : (ethUsd ? usd(priceEth * ethUsd * supply) : (priceEth * supply).toFixed(2) + ' ETH');
+      } else { $('qlt-price').textContent = '—'; $('qlt-mcap').textContent = '—'; }
+      var graduated = r[3] ? word(r[3], 0) === 1n : false;
+      if (graduated) {
+        $('qlt-pct').textContent = '100%'; $('qlt-bar').style.width = '100%'; $('qlt-sub').textContent = 'Graduated';
+      } else if (r[1] && r[2]) {
+        var raised = num(word(r[1], 0), 18), threshold = num(word(r[2], 0), 18);
+        var pct = Math.min(100, threshold > 0 ? raised / threshold * 100 : 0);
+        $('qlt-pct').textContent = pct.toFixed(1) + '%';
+        $('qlt-bar').style.width = pct + '%';
+        $('qlt-sub').textContent = raised.toFixed(3) + ' / ' + threshold.toFixed(2) + ' ETH to graduation';
+      } else { $('qlt-pct').textContent = '—'; $('qlt-sub').textContent = 'Live data unavailable right now.'; }
+    });
+    fetch('https://robinhoodchain.blockscout.com/api/v2/tokens/' + TOKEN)
+      .then(function (r) { return r.json(); })
+      .then(function (j) { var h = j.holders_count || j.holders; $('qlt-holders').textContent = h ? Number(h).toLocaleString('en-US') : '—'; })
+      .catch(function () { $('qlt-holders').textContent = '—'; });
+  }
+  if ($('qlt-price')) { load(); setInterval(load, 30000); }
 })();
 </script>
 </body>
