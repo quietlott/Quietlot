@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quietlot (prototype)</title>
+<style>
+  :root { color-scheme: light dark; --bd: #8884; --muted: #888; }
+  body { font: 14px/1.5 system-ui, sans-serif; margin: 0; padding: 24px; max-width: 960px; margin-inline: auto; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  h2 { font-size: 16px; margin: 0 0 8px; }
+  .warn { border: 1px solid #c77; background: #c771; padding: 10px 12px; border-radius: 6px; margin: 12px 0; }
+  .card { border: 1px solid var(--bd); border-radius: 8px; padding: 16px; margin: 16px 0; }
+  .row { display: flex; gap: 12px; flex-wrap: wrap; }
+  .row > label { flex: 1 1 200px; display: flex; flex-direction: column; gap: 4px; }
+  input, select, textarea, button { font: inherit; padding: 6px 8px; border-radius: 6px; border: 1px solid var(--bd); }
+  textarea { width: 100%; min-height: 110px; font-family: ui-monospace, monospace; font-size: 12px; box-sizing: border-box; }
+  button { cursor: pointer; }
+  button.primary { background: #2f6fed; color: white; border-color: #2f6fed; }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  pre { background: #8881; padding: 10px; border-radius: 6px; overflow: auto; white-space: pre-wrap; word-break: break-all; }
+  .muted { color: var(--muted); font-size: 12px; }
+  .status { margin-top: 8px; min-height: 1.5em; }
+  .ok { color: #2a8a3a; } .bad { color: #c33; }
+</style>
+</head>
+<body>
+<h1>Quietlot (prototype)</h1>
+<p class="muted">Off-chain negotiation, on-chain atomic settlement. Agents never hold keys.</p>
+
+<div class="warn">
+  <strong>Unaudited prototype.</strong> Do not use with real funds until the contracts are tested on a testnet and independently audited.
+</div>
+
+<div class="card">
+  <h2>1. Wallet and network</h2>
+  <div class="row">
+    <label>RPC URL<input id="rpc" placeholder="Enter the chain's RPC URL"></label>
+    <label>Chain ID<input id="chainId" value="4663" type="number"></label>
+    <label>Settlement contract<input id="contract" placeholder="0x... (set after deploy)"></label>
+  </div>
+  <div class="row" style="margin-top:12px">
+    <button id="connect" class="primary">Connect wallet</button>
+    <span id="account" class="muted">Not connected</span>
+  </div>
+  <div class="muted" style="margin-top:6px">Enter the official RPC endpoint for the chain. This prototype does not ship one.</div>
+</div>
+
+<div class="card">
+  <h2>2. Create and sign a mandate</h2>
+  <p class="muted">Your wallet signs the mandate (EIP-712). Limits stay in this browser until you share the signed mandate.</p>
+  <div class="row">
+    <label>Role
+      <select id="role"><option value="seller">Seller (sell base)</option><option value="buyer">Buyer (pay quote)</option></select>
+    </label>
+    <label>Base token address<input id="base" placeholder="0x..."></label>
+    <label>Quote token address<input id="quote" placeholder="0x..."></label>
+  </div>
+  <div class="row" style="margin-top:12px">
+    <label>Quantity (base units)<input id="qty" type="text" inputmode="numeric" placeholder="1000000"></label>
+    <label id="limitLabel">Limit (min net quote, quote units)<input id="limit" type="text" inputmode="numeric" placeholder="990000"></label>
+    <label>Valid for (minutes)<input id="ttl" type="number" value="60" min="1"></label>
+  </div>
+  <div class="row" style="margin-top:12px">
+    <label>Agreed gross quote (quote units, from the negotiation)<input id="agreed" type="text" inputmode="numeric"></label>
+    <label>Transcript digest (0x..., from the negotiation)<input id="digest" placeholder="0x..."></label>
+  </div>
+  <p class="muted">Both principals sign the same agreed price and transcript digest. The settlement only goes through if the two mandates match.</p>
+  <div class="row" style="margin-top:12px">
+    <button id="sign" class="primary" disabled>Sign mandate</button>
+    <button id="cancelNonce" disabled title="Cancel the last mandate you signed on-chain">Cancel last mandate on-chain</button>
+  </div>
+  <div id="signStatus" class="status"></div>
+  <p class="muted">Keep your limit private. Share only the signed mandate JSON below with the agent or counterparty you choose.</p>
+  <textarea id="signedOut" readonly placeholder="Signed mandate appears here"></textarea>
+</div>
+
+<div class="card">
+  <h2>3. Settle a matched pair</h2>
+  <p class="muted">Paste the seller's and buyer's signed mandates (from step 2). The price and transcript come from the signed mandates. The contract checks both signatures, that the two mandates agree, the net floor, and the buyer's cap.</p>
+  <div class="row">
+    <label>Seller signed mandate (JSON)<textarea id="sellerIn"></textarea></label>
+    <label>Buyer signed mandate (JSON)<textarea id="buyerIn"></textarea></label>
+  </div>
+  <div id="feePreview" class="muted" style="margin-top:6px"></div>
+  <div class="row" style="margin-top:12px">
+    <button id="approve" disabled>Approve tokens for settlement</button>
+    <button id="settle" class="primary" disabled>Settle on-chain</button>
+  </div>
+  <div id="settleStatus" class="status"></div>
+</div>
+
+<div class="card">
+  <h2>4. Transcript digest and verification</h2>
+  <p class="muted">Paste the negotiation transcript. The page computes its digest, which you can copy into step 2. With a settlement transaction hash, the page also compares the digest with the transcriptHash in the Settled event. A match shows the transcript was recorded for that trade. It does not show that the steps followed the rules.</p>
+  <label>Negotiation transcript (JSON array of steps)
+    <textarea id="transcriptIn" placeholder='[{"round":1,"seller_ask":1000,"buyer_bid":900,"offer":950,"within_limits":true}]'></textarea>
+  </label>
+  <div id="digestOut" class="muted" style="margin-top:6px"></div>
+  <div class="row" style="margin-top:12px">
+    <label>Settlement tx hash<input id="verifyTx" placeholder="0x..."></label>
+    <label>Agreed gross quote (quote units)<input id="verifyGross" type="text" inputmode="numeric"></label>
+  </div>
+  <div class="row" style="margin-top:12px">
+    <button id="verify">Verify transcript</button>
+  </div>
+  <div id="verifyStatus" class="status"></div>
+</div>
+
+<script src="vendor/ethers.umd.min.js"></script>
+<script src="abi.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
