@@ -220,7 +220,6 @@
 </style>
 </head>
 <body>
-<canvas class="bg-3d" aria-hidden="true"></canvas>
 
 <header>
   <div class="wrap nav">
@@ -836,7 +835,7 @@ import * as THREE from 'three';
 import { SVGLoader } from 'three/addons/loaders/SVGLoader.js';
 
 const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-const bg = document.querySelector('.bg-3d');
+const bg = null; // background mark removed; only the hero mark remains
 if (bg && !reduce) {
   let renderer = null;
   try { renderer = new THREE.WebGLRenderer({ canvas: bg, alpha: true, antialias: true }); } catch (e) { bg.remove(); }
