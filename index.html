@@ -205,6 +205,7 @@
 
   footer { border-top: 1px solid var(--line); padding: 30px 0 44px; color: var(--muted); font-size: 12px; }
   footer .wrap { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+  .qlt-card { max-width: 620px; position: relative; z-index: 2; background: rgba(10,10,10,.82); backdrop-filter: blur(6px); }
   .qlt-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 14px 0 12px; }
   .qlt-stats div { display: flex; flex-direction: column; gap: 4px; }
   .qlt-stats span { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
@@ -321,7 +322,7 @@
       <span class="arrow">↗</span>
     </a>
 
-    <div class="contract" style="margin-top:28px; margin-bottom:28px;">
+    <div class="contract qlt-card" style="margin-top:28px; margin-bottom:28px;">
       <div class="label mono">$QLT · Community token · Robinhood Chain</div>
       <div class="qlt-stats">
         <div><span class="mono">Price</span><b id="qlt-price">…</b></div>
@@ -1054,7 +1055,6 @@ if (bg && !reduce) {
         $('qlt-bar').style.width = pct + '%';
         $('qlt-sub').textContent = raised.toFixed(3) + ' / ' + threshold.toFixed(2) + ' ETH to graduation';
       } else { $('qlt-pct').textContent = '—'; $('qlt-sub').textContent = 'Live data unavailable right now.'; }
-      if (errs.length) $('qlt-sub').textContent += ' [debug: ' + errs.join('; ') + ']';
     });
     fetch('https://robinhoodchain.blockscout.com/api/v2/tokens/' + TOKEN)
       .then(function (r) { return r.json(); })
