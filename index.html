@@ -992,16 +992,21 @@ if (bg && !reduce) {
 <script>
 (function () {
   // $QLT live stats. Reads straight from Robinhood Chain (pons v2 curve), per docs.ponsfamily.com/docs/v2.
-  var RPC = 'https://rpc.mainnet.chain.robinhood.com';
+  var RPCS = ['https://robinhoodchain.blockscout.com/api/eth-rpc', 'https://rpc.mainnet.chain.robinhood.com'];
   var TOKEN = '0x4cd7d02382988703ba625cb9e705b8df9798a5fa';
   var CURVE = '0xa509876b671d810dc7ff48d0598f02fe05bf0435';
   var $ = function (id) { return document.getElementById(id); };
-  var id = 0;
-  function call(to, data) {
-    return fetch(RPC, { method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ jsonrpc: '2.0', id: ++id, method: 'eth_call', params: [{ to: to, data: data }, 'latest'] }) })
+  var errs = [];
+  var rid = 0;
+  function rpc(url, to, data) {
+    return fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ jsonrpc: '2.0', id: ++rid, method: 'eth_call', params: [{ to: to, data: data }, 'latest'] }) })
       .then(function (r) { return r.json(); })
-      .then(function (j) { if (j.error || !j.result || j.result === '0x') throw new Error('rpc'); return j.result; });
+      .then(function (j) { if (j.error || !j.result || j.result === '0x') throw new Error(j.error ? (j.error.message || 'rpc error') : 'empty'); return j.result; });
+  }
+  function call(to, data, name) {
+    return rpc(RPCS[0], to, data).catch(function () { return rpc(RPCS[1], to, data); })
+      .catch(function (e) { errs.push(name + ': ' + e.message); return null; });
   }
   function word(hex, i) { return BigInt('0x' + hex.slice(2 + i * 64, 2 + (i + 1) * 64)); }
   function num(big, dec) { return Number(big) / Math.pow(10, dec); }
@@ -1013,40 +1018,43 @@ if (bg && !reduce) {
     return '$0';
   }
   function load() {
+    errs = [];
     var eth = fetch('https://coins.llama.fi/prices/current/coingecko:ethereum')
       .then(function (r) { return r.json(); })
       .then(function (j) { return j.coins['coingecko:ethereum'].price; })
-      .catch(function () { return null; });
+      .catch(function () { errs.push('eth price'); return null; });
     Promise.all([
-      call(CURVE, '0x0902f1ac'), // getReserves()
-      call(CURVE, '0x4f1f58fd'), // realQuoteReserve()
-      call(CURVE, '0x8b0bc501'), // graduationThreshold()
-      call(CURVE, '0xe7c2b772'), // graduated()
-      call(TOKEN, '0x18160ddd'), // totalSupply()
-      call(TOKEN, '0x313ce567'), // decimals()
+      call(CURVE, '0x0902f1ac', 'getReserves'),
+      call(CURVE, '0x4f1f58fd', 'realQuoteReserve'),
+      call(CURVE, '0x8b0bc501', 'graduationThreshold'),
+      call(CURVE, '0xe7c2b772', 'graduated'),
+      call(TOKEN, '0x18160ddd', 'totalSupply'),
+      call(TOKEN, '0x313ce567', 'decimals'),
       eth
     ]).then(function (r) {
-      var dec = Number(word(r[5], 0));
-      var quoteRes = num(word(r[0], 0), 18), tokenRes = num(word(r[0], 1), dec);
-      var raised = num(word(r[1], 0), 18), threshold = num(word(r[2], 0), 18);
-      var graduated = word(r[3], 0) === 1n;
-      var supply = num(word(r[4], 0), dec);
-      var priceEth = tokenRes > 0 ? quoteRes / tokenRes : 0;
+      var dec = r[5] ? Number(word(r[5], 0)) : 18;
       var ethUsd = r[6];
-      var pct = graduated ? 100 : Math.min(100, threshold > 0 ? raised / threshold * 100 : 0);
-      if (ethUsd) {
-        $('qlt-price').textContent = usd(priceEth * ethUsd);
-        $('qlt-mcap').textContent = usd(priceEth * ethUsd * supply);
-      } else {
-        $('qlt-price').textContent = priceEth.toPrecision(3) + ' ETH';
-        $('qlt-mcap').textContent = (priceEth * supply).toFixed(2) + ' ETH';
+      var supply = r[4] ? num(word(r[4], 0), dec) : null;
+      var priceEth = null;
+      if (r[0]) {
+        var q = num(word(r[0], 0), 18), t = num(word(r[0], 1), dec);
+        if (t > 0) priceEth = q / t;
       }
-      $('qlt-pct').textContent = pct.toFixed(1) + '%';
-      $('qlt-bar').style.width = pct + '%';
-      $('qlt-sub').textContent = graduated ? 'Graduated' : raised.toFixed(3) + ' / ' + threshold.toFixed(2) + ' ETH to graduation';
-    }).catch(function () {
-      ['qlt-price', 'qlt-mcap', 'qlt-pct'].forEach(function (k) { $(k).textContent = '—'; });
-      $('qlt-sub').textContent = 'Live data unavailable right now.';
+      if (priceEth !== null) {
+        $('qlt-price').textContent = ethUsd ? usd(priceEth * ethUsd) : priceEth.toPrecision(3) + ' ETH';
+        $('qlt-mcap').textContent = supply === null ? '—' : (ethUsd ? usd(priceEth * ethUsd * supply) : (priceEth * supply).toFixed(2) + ' ETH');
+      } else { $('qlt-price').textContent = '—'; $('qlt-mcap').textContent = '—'; }
+      var graduated = r[3] ? word(r[3], 0) === 1n : false;
+      if (graduated) {
+        $('qlt-pct').textContent = '100%'; $('qlt-bar').style.width = '100%'; $('qlt-sub').textContent = 'Graduated';
+      } else if (r[1] && r[2]) {
+        var raised = num(word(r[1], 0), 18), threshold = num(word(r[2], 0), 18);
+        var pct = Math.min(100, threshold > 0 ? raised / threshold * 100 : 0);
+        $('qlt-pct').textContent = pct.toFixed(1) + '%';
+        $('qlt-bar').style.width = pct + '%';
+        $('qlt-sub').textContent = raised.toFixed(3) + ' / ' + threshold.toFixed(2) + ' ETH to graduation';
+      } else { $('qlt-pct').textContent = '—'; $('qlt-sub').textContent = 'Live data unavailable right now.'; }
+      if (errs.length) $('qlt-sub').textContent += ' [debug: ' + errs.join('; ') + ']';
     });
     fetch('https://robinhoodchain.blockscout.com/api/v2/tokens/' + TOKEN)
       .then(function (r) { return r.json(); })
