@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <title>Quietlot logo D: ring and block</title>
+  <defs>
+    <mask id="cut">
+      <rect width="512" height="512" fill="#fff"/>
+      <rect x="292" y="292" width="140" height="140" fill="#000"/>
+    </mask>
+  </defs>
+  <!-- Quiet: an open ring with its lower-right quadrant removed -->
+  <circle cx="240" cy="240" r="176" fill="#000" mask="url(#cut)"/>
+  <circle cx="240" cy="240" r="112" fill="#fff" mask="url(#cut)"/>
+  <!-- Lot: a solid parcel sitting inside the cut -->
+  <rect x="300" y="300" width="132" height="132" fill="#000"/>
+</svg>

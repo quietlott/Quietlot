@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <title>Quietlot logo E: Q with block tail</title>
+  <!-- Q bowl: monoline ring -->
+  <circle cx="232" cy="232" r="150" fill="none" stroke="#000" stroke-width="58"/>
+  <!-- Tail: a square block that breaks the bowl diagonally -->
+  <rect x="330" y="330" width="120" height="120" fill="#000"/>
+</svg>

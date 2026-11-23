@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 400" width="1200" height="400">
+  <rect width="1200" height="400" fill="#000"/>
+  <g transform="translate(90 80) scale(0.47)">
+  <path fill="#fff" d="M236 60A196 196 0 0 0 236 452V372A116 116 0 0 1 236 140Z"/>
+  <path fill="#fff" d="M276 60A196 196 0 0 1 452 276H372A116 116 0 0 0 276 140Z"/>
+  <path fill="#fff" d="M276 316H452V452H276Z"/>
+  </g>
+  <text x="400" y="232" fill="#fff" font-family="Helvetica, Arial, sans-serif" font-size="120" font-weight="600" letter-spacing="-4">Quietlot</text>
+</svg>

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <title>Quietlot I: two halves, one match</title>
+  <path fill="#000" d="M236 60A196 196 0 0 0 236 452V372A116 116 0 0 1 236 140Z"/>
+  <path fill="#000" d="M276 60A196 196 0 0 1 452 276H372A116 116 0 0 0 276 140Z"/>
+  <path fill="#000" d="M276 316H452V452H276Z"/>
+</svg>
