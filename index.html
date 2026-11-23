@@ -323,7 +323,8 @@
     </a>
 
     <div class="contract qlt-card" style="margin-top:28px; margin-bottom:28px;">
-      <div class="label mono">$QLT · Community token · Robinhood Chain</div>
+      <div class="label mono">$QLT · Robinhood Chain</div>
+      <p class="mono qlt-sub" style="margin:6px 0 0;">Hold 1M $QLT → 0.10% seller fee instead of 0.20%</p>
       <div class="qlt-stats">
         <div><span class="mono">Price</span><b id="qlt-price">…</b></div>
         <div><span class="mono">Market cap</span><b id="qlt-mcap">…</b></div>
@@ -351,7 +352,7 @@
         <label>Seller floor, net per unit (TKB) <span class="val" id="vFloor"></span><input type="range" id="floor" min="90" max="110" step="0.5" value="100"></label>
         <label>Buyer cap, gross per unit (TKB) <span class="val" id="vCap"></span><input type="range" id="cap" min="90" max="120" step="0.5" value="106"></label>
         <label>Max rounds <span class="val" id="vRounds"></span><input type="range" id="rounds" min="1" max="16" step="1" value="12"></label>
-        <label class="check"><input type="checkbox" id="disc"> Seller holds the discount token (10 bps)</label>
+        <label class="check"><input type="checkbox" id="disc"> Seller holds 1M+ $QLT (10 bps)</label>
         <div class="presets">
           <span class="plabel mono">Scenario</span>
           <div class="prow">
@@ -445,15 +446,15 @@
     <h2>Pay only when a trade settles</h2>
     <p class="sub">No subscription. Failed negotiations and cancelled orders cost nothing.</p>
     <div class="fees">
-      <div class="fee"><span class="lbl mono">Standard · 20 bps</span><p class="num">0.20%</p><p>Applies to all sellers who do not hold the discount token.</p></div>
-      <div class="fee"><span class="lbl mono">Discount holders · 10 bps</span><p class="num">0.10%</p><p>Applies when the seller's discount token balance meets the threshold set in the contract.</p></div>
+      <div class="fee"><span class="lbl mono">Standard · 20 bps</span><p class="num">0.20%</p><p>Applies to sellers holding less than 1,000,000 $QLT.</p></div>
+      <div class="fee"><span class="lbl mono">$QLT holders · 10 bps</span><p class="num">0.10%</p><p>Applies when the seller holds at least 1,000,000 $QLT at settlement. The token and threshold are fixed in the contract.</p></div>
       <div class="fee"><span class="lbl mono">Ceiling · 50 bps</span><p class="num">0.50%</p><p>A hard maximum set in the contract. It cannot be raised.</p></div>
     </div>
     <p class="fine">Fees come from the seller's proceeds and are calculated on the gross amount before the fee.</p>
     <div class="feecalc">
       <label>Trade size (TKA)<input type="number" id="feeQty" value="1000" min="1" step="1"></label>
       <label>Price per unit (TKB)<input type="number" id="feePrice" value="100" min="0.01" step="0.01"></label>
-      <label class="check"><input type="checkbox" id="feeDisc"> Seller holds the discount token</label>
+      <label class="check"><input type="checkbox" id="feeDisc"> Seller holds 1M+ $QLT</label>
       <div class="feeout" id="feeOut" aria-live="polite"></div>
     </div>
   </div>

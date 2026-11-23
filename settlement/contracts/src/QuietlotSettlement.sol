@@ -44,7 +44,7 @@ contract QuietlotSettlement {
 
     address public immutable owner;
     address public immutable treasury;
-    IERC20 public immutable discountToken;   // $INTP
+    IERC20 public immutable discountToken;   // $QLT
     uint256 public immutable discountThreshold;
 
     mapping(address => mapping(uint256 => bool)) public nonceUsed;

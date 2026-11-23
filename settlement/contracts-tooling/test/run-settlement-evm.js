@@ -100,7 +100,7 @@ function mustPass(exec, what) {
 
   const base = await deploy(art.MockERC20, ['BASE'], owner);
   const quote = await deploy(art.MockERC20, ['QUOTE'], owner);
-  const intp = await deploy(art.MockERC20, ['INTP'], owner);
+  const intp = await deploy(art.MockERC20, ['QLT'], owner);
   const settle = await deploy(art.QuietlotSettlement, [treasury, intp, 1000n], owner);
   const domain = { name: 'Quietlot', version: '1', chainId: CHAIN_ID, verifyingContract: settle };
 
